@@ -45,9 +45,9 @@ def login():
 		
 		if user and user.check_password(password):
 			login_user(user)
-			flash('Login successful!', 'success')
+			flash('Login successful! Welcome back, ' + user.username + '!', 'success')
 			next_page = request.args.get('next')
-			return redirect(next_page if next_page else url_for('index'))
+			return redirect(next_page if next_page else url_for('dashboard'))
 		else:
 			flash('Invalid username or password', 'error')
 	
@@ -85,8 +85,10 @@ def signup():
 		db.session.add(new_user)
 		db.session.commit()
 		
-		flash('Registration successful! Please login.', 'success')
-		return redirect(url_for('login'))
+		flash('Registration successful! Welcome to AgriGo, ' + new_user.username + '!', 'success')
+		# Auto-login the user after signup
+		login_user(new_user)
+		return redirect(url_for('dashboard'))
 	
 	return render_template('signup.html')
 
@@ -97,15 +99,44 @@ def logout():
 	flash('You have been logged out.', 'info')
 	return redirect(url_for('index'))
 
+@app.route('/dashboard')
+@login_required
+def dashboard():
+	return render_template('dashboard.html')
+
+@app.route('/profile')
+@login_required
+def profile():
+	return render_template('profile.html', user=current_user)
+
+@app.route('/about')
+def about():
+	return render_template('about.html')
+
+@app.route('/contact', methods=['GET', 'POST'])
+def contact():
+	if request.method == 'POST':
+		name = request.form.get('name')
+		email = request.form.get('email')
+		message = request.form.get('message')
+		flash(f'Thank you {name}! Your message has been received. We will get back to you soon.', 'success')
+		return redirect(url_for('contact'))
+	return render_template('contact.html')
+
 @app.route('/crop-recommendation', methods=['GET', 'POST'])
 @login_required
 def crop_recommendation():
 	if request.method == "POST":
-		to_predict_list = request.form.to_dict()
-		to_predict_list = list(to_predict_list.values())
-		to_predict_list = list(map(float, to_predict_list))
-		result = get_crop_recommendation(to_predict_list)
-		return render_template("recommend_result.html", result=result)
+		try:
+			to_predict_list = request.form.to_dict()
+			to_predict_list = list(to_predict_list.values())
+			to_predict_list = list(map(float, to_predict_list))
+			result = get_crop_recommendation(to_predict_list)
+			flash('Crop recommendation generated successfully!', 'success')
+			return render_template("recommend_result.html", result=result)
+		except Exception as e:
+			flash(f'Error generating recommendation: {str(e)}', 'error')
+			return render_template('crop-recommend.html')
 	else:
 		return render_template('crop-recommend.html')
 
@@ -113,14 +144,23 @@ def crop_recommendation():
 @login_required
 def fertilizer_recommendation():
 	if request.method == "POST":
-		to_predict_list = request.form.to_dict()
-		to_predict_list = list(to_predict_list.values())
-		to_predict_list = list(map(float, to_predict_list))
-		result = get_fertilizer_recommendation(
-			num_features=to_predict_list[:-2],
-			cat_features=to_predict_list[-2:]
-		)
-		return render_template("recommend_result.html", result=result)
+		try:
+			to_predict_list = request.form.to_dict()
+			to_predict_list = list(to_predict_list.values())
+			to_predict_list = list(map(float, to_predict_list))
+			result = get_fertilizer_recommendation(
+				num_features=to_predict_list[:-2],
+				cat_features=to_predict_list[-2:]
+			)
+			flash('Fertilizer recommendation generated successfully!', 'success')
+			return render_template("recommend_result.html", result=result)
+		except Exception as e:
+			flash(f'Error generating recommendation: {str(e)}', 'error')
+			return render_template(
+				'fertilizer-recommend.html', 
+				soil_types=enumerate(soil_types),
+				crop_types=enumerate(Crop_types)
+			)
 	else:
 		return render_template(
 			'fertilizer-recommend.html', 
@@ -133,16 +173,38 @@ def disease_prediction():
 	if request.method=="GET":
 		return render_template('crop-disease.html', crops=crop_list)
 	else:
-		file = request.files["file"]
-		crop = request.form["crop"]
+		try:
+			if 'file' not in request.files:
+				flash('No file uploaded. Please select an image.', 'error')
+				return render_template('crop-disease.html', crops=crop_list)
+			
+			file = request.files["file"]
+			crop = request.form["crop"]
+			
+			if file.filename == '':
+				flash('No file selected. Please choose an image.', 'error')
+				return render_template('crop-disease.html', crops=crop_list)
+			
+			# Validate file extension
+			allowed_extensions = {'png', 'jpg', 'jpeg', 'gif', 'bmp'}
+			if not ('.' in file.filename and file.filename.rsplit('.', 1)[1].lower() in allowed_extensions):
+				flash('Invalid file type. Please upload an image (png, jpg, jpeg, gif, bmp).', 'error')
+				return render_template('crop-disease.html', crops=crop_list)
 
-		basepath = os.path.dirname(__file__)
-		file_path = os.path.join(basepath,'uploads',  secure_filename(file.filename))
-		file.save(file_path)
-		prediction = img_predict(file_path, crop)
-		result = get_diseases_classes(crop, prediction)
-
-		return render_template('disease-prediction-result.html', image_file_name=file.filename, result=result)
+			basepath = os.path.dirname(__file__)
+			# Create uploads folder if it doesn't exist
+			os.makedirs(os.path.join(basepath, 'uploads'), exist_ok=True)
+			
+			file_path = os.path.join(basepath,'uploads',  secure_filename(file.filename))
+			file.save(file_path)
+			prediction = img_predict(file_path, crop)
+			result = get_diseases_classes(crop, prediction)
+			
+			flash('Disease prediction completed successfully!', 'success')
+			return render_template('disease-prediction-result.html', image_file_name=file.filename, result=result)
+		except Exception as e:
+			flash(f'Error processing image: {str(e)}', 'error')
+			return render_template('crop-disease.html', crops=crop_list)
 
 @app.route('/uploads/<filename>')
 def send_file(filename):
