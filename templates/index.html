@@ -155,16 +155,22 @@
 					<li class="nav-item">
 						<a class="nav-link active" href="/">Home</a>
 					</li>
+					<li class="nav-item">
+						<a class="nav-link" href="/about">About</a>
+					</li>
 					<li class="nav-item dropdown">
 						<a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button"
 							data-bs-toggle="dropdown">
 							Services
 						</a>
 						<ul class="dropdown-menu">
-							<li><a class="dropdown-item" href="/crop-disease">Crop Diseases</a></li>
+						<li><a class="dropdown-item" href="/disease-prediction">Crop Diseases</a></li>
 							<li><a class="dropdown-item" href="/fertilizer-recommendation">Fertilizer Recommendation</a></li>
 							<li><a class="dropdown-item" href="/crop-recommendation">Crop Recommendation</a></li>
 						</ul>
+					</li>
+					<li class="nav-item">
+						<a class="nav-link" href="/contact">Contact</a>
 					</li>
 				</ul>
 				<ul class="navbar-nav ms-auto align-items-center">
@@ -209,6 +215,8 @@
 			</div>
 		{% endif %}
 	{% endwith %}
+	
+	{% block content %}
 	<section id="banner">
 		<div class="banner-overlay"></div>
 		<div class="banner-content">
@@ -424,7 +432,13 @@
 							</a>
 						</div>
 					</div>
-				</div> class="py-5 bg-dark text-white">
+				</div>
+			</div>
+		</div>
+	</section>
+	{% endblock %}
+	
+	<section class="py-5 bg-dark text-white">
 		<div class="container py-5">
 			<div class="row g-4">
 				<div class="col-lg-4">
@@ -445,7 +459,7 @@
 						<li class="mb-2"><a href="/" class="text-white-50 text-decoration-none">Home</a></li>
 						<li class="mb-2"><a href="/crop-recommendation" class="text-white-50 text-decoration-none">Crop Recommendation</a></li>
 						<li class="mb-2"><a href="/fertilizer-recommendation" class="text-white-50 text-decoration-none">Fertilizer Recommendation</a></li>
-						<li class="mb-2"><a href="/crop-disease" class="text-white-50 text-decoration-none">Disease Detection</a></li>
+						<li class="mb-2"><a href="/disease-prediction" class="text-white-50 text-decoration-none">Disease Detection</a></li>
 					</ul>
 				</div>
 				<div class="col-lg-4">
@@ -544,7 +558,7 @@
 					<img src="./static/images/service-2.jpg">
 
 				</div>
-				<a href="/crop-disease" style="color: #000">
+			<a href="/disease-prediction" style="color: #000">
 					<h1>Crop Disease Prediction</h1>
 				</a>
 				<p>From the images of your crops our models can check their health. </p>
