@@ -1,66 +1,431 @@
 {% extends "index.html" %}
 {% block content %}
-<div class="container pt-5">
-  <h1 class="text-center" style="color: #8CE17D;">Crop Disease Prediction</h1>
-  <p class="text-center pt-3">Our models provide you an easy,fast and efficient way to detect diseases in your plants.
-  </p>
-</div>
-<form action="{{ url_for('disease_prediction')}}" method="POST" enctype="multipart/form-data"
-  style="margin-top: 30px; width: 80%; text-align: center; margin: auto">
-  <br>
-  <br>
-  <br>
-  <div class="container">
-    <div class="row d-flex justify-content-center">
-      <label>Choose a crop :</label>
-      <div class="col-md-4">
 
-        <select name="crop" class="form-control" required="required">
-          {% for crop in crops %}
-          <option type="text" value="{{crop}}" data-show=".{{crop}}">{{crop}}</option>
-          {% endfor %}
-        </select>
-      </div>
-    </div>
-    <br />
-    <div class="row d-flex justify-content-center">
-      <label>Upload your image : </label>
-      <div class="col-md-4 pt-2">
+<style>
+  .disease-container {
+    max-width: 1200px;
+    margin: 40px auto;
+    padding: 0 20px;
+  }
 
-        <input class="form-control" name="file" type="file" id="formFile" onchange="preview_image(event)"
-          required="required">
+  .disease-header {
+    text-align: center;
+    margin-bottom: 50px;
+    padding: 40px 20px;
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    border-radius: 20px;
+    color: white;
+  }
 
-      </div>
+  .disease-header h1 {
+    font-size: 36px;
+    font-weight: 700;
+    margin-bottom: 15px;
+  }
 
-    </div>
-    <img id="output-image" class="rounded mx-auto d-block" src="{{ url_for('send_file', filename=file_name)}}"
-      onerror="this.src='./static/images/upload.jpg'"
-      style="max-width: 500px; max-height: 450px; margin-top: 30px; margin-bottom: 2px" />
-    <p style="font-style: italic">{{ file_name }}</p>
-    <br>
-    <div class="row" style="text-align:center;">
-      <div class="col-md-12">
-        <button type="submit" class="btn btn-success" value="submit">predict</button>
-      </div>
-    </div>
+  .disease-header p {
+    font-size: 18px;
+    opacity: 0.95;
+    max-width: 700px;
+    margin: 0 auto;
+  }
 
+  .prediction-card {
+    background: white;
+    border-radius: 20px;
+    padding: 40px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+  }
+
+  .form-section {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 40px;
+    align-items: start;
+  }
+
+  @media (max-width: 768px) {
+    .form-section {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .upload-section {
+    position: relative;
+  }
+
+  .crop-select-wrapper {
+    margin-bottom: 30px;
+  }
+
+  .crop-select-wrapper label {
+    display: block;
+    font-size: 16px;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 10px;
+  }
+
+  .crop-select-wrapper select {
+    width: 100%;
+    padding: 14px 18px;
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    font-size: 15px;
+    color: #374151;
+    background: white;
+    transition: all 0.3s;
+    cursor: pointer;
+  }
+
+  .crop-select-wrapper select:focus {
+    outline: none;
+    border-color: #10b981;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+  }
+
+  .upload-area {
+    position: relative;
+    border: 3px dashed #d1d5db;
+    border-radius: 16px;
+    padding: 40px 20px;
+    text-align: center;
+    background: #f9fafb;
+    transition: all 0.3s;
+    cursor: pointer;
+  }
+
+  .upload-area:hover {
+    border-color: #10b981;
+    background: #f0fdf4;
+  }
+
+  .upload-area.dragover {
+    border-color: #10b981;
+    background: #ecfdf5;
+  }
+
+  .upload-icon {
+    font-size: 48px;
+    color: #10b981;
+    margin-bottom: 15px;
+  }
+
+  .upload-text h3 {
+    font-size: 18px;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 8px;
+  }
+
+  .upload-text p {
+    font-size: 14px;
+    color: #6b7280;
+    margin-bottom: 15px;
+  }
+
+  .file-input {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+
+  .btn-browse {
+    display: inline-block;
+    padding: 10px 24px;
+    background: #10b981;
+    color: white;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 14px;
+    transition: all 0.3s;
+    border: none;
+  }
+
+  .btn-browse:hover {
+    background: #059669;
+    transform: translateY(-2px);
+  }
+
+  .preview-section {
+    margin-top: 30px;
+  }
+
+  .image-preview {
+    position: relative;
+    width: 100%;
+    max-width: 500px;
+    margin: 0 auto;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    display: none;
+  }
+
+  .image-preview.active {
+    display: block;
+  }
+
+  .image-preview img {
+    width: 100%;
+    height: auto;
+    display: block;
+  }
+
+  .image-info {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 15px;
+    background: linear-gradient(to top, rgba(0,0,0,0.7), transparent);
+    color: white;
+    font-size: 14px;
+  }
+
+  .remove-image {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 32px;
+    height: 32px;
+    background: rgba(220, 38, 38, 0.9);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s;
+  }
+
+  .remove-image:hover {
+    background: #dc2626;
+    transform: scale(1.1);
+  }
+
+  .btn-predict {
+    width: 100%;
+    padding: 16px;
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-size: 18px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s;
+    margin-top: 30px;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+  }
+
+  .btn-predict:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+  }
+
+  .btn-predict:disabled {
+    background: #d1d5db;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  .supported-crops {
+    margin-top: 40px;
+    padding: 30px;
+    background: #f9fafb;
+    border-radius: 16px;
+  }
+
+  .supported-crops h3 {
+    font-size: 20px;
+    font-weight: 600;
+    color: #111827;
+    margin-bottom: 20px;
+    text-align: center;
+  }
+
+  .crop-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+    gap: 15px;
+  }
+
+  .crop-item {
+    text-align: center;
+    padding: 15px;
+    background: white;
+    border-radius: 12px;
+    border: 2px solid #e5e7eb;
+    transition: all 0.3s;
+  }
+
+  .crop-item:hover {
+    border-color: #10b981;
+    transform: translateY(-3px);
+  }
+
+  .crop-item i {
+    font-size: 32px;
+    color: #10b981;
+    margin-bottom: 8px;
+  }
+
+  .crop-item span {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: #374151;
+    text-transform: capitalize;
+  }
+</style>
+
+<div class="disease-container">
+  <div class="disease-header">
+    <h1><i class="fas fa-microscope me-2"></i>Crop Disease Detection</h1>
+    <p>Upload an image of your crop to detect diseases instantly using our advanced AI-powered diagnostic system. Get accurate results and treatment recommendations in seconds.</p>
   </div>
 
-</form>
-<br>
-<br>
-<br>
+  <div class="prediction-card">
+    <form action="{{ url_for('disease_prediction')}}" method="POST" enctype="multipart/form-data" id="diseaseForm">
+      <div class="form-section">
+        <div class="upload-section">
+          <div class="crop-select-wrapper">
+            <label for="crop-select">
+              <i class="fas fa-leaf me-2"></i>Select Crop Type
+            </label>
+            <select name="crop" id="crop-select" class="form-control" required>
+              <option value="">Choose a crop...</option>
+              {% for crop in crops %}
+              <option value="{{crop}}">{{ crop.capitalize() }}</option>
+              {% endfor %}
+            </select>
+          </div>
 
-<script type="text/javascript">
-  function preview_image(event) {
-    var reader = new FileReader();
-    reader.onload = function () {
-      var output = document.getElementById('output-image')
-      output.src = reader.result;
-    }
-    reader.readAsDataURL(event.target.files[0]);
+          <div class="upload-area" id="uploadArea">
+            <input type="file" name="file" id="formFile" class="file-input" accept="image/*" required onchange="preview_image(event)">
+            <div class="upload-icon">
+              <i class="fas fa-cloud-upload-alt"></i>
+            </div>
+            <div class="upload-text">
+              <h3>Upload Crop Image</h3>
+              <p>Drag and drop or click to browse</p>
+              <button type="button" class="btn-browse" onclick="document.getElementById('formFile').click()">
+                <i class="fas fa-folder-open me-2"></i>Browse Files
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="preview-section">
+          <div class="image-preview" id="imagePreview">
+            <img id="output-image" src="./static/images/upload.jpg" alt="Preview">
+            <button type="button" class="remove-image" onclick="removeImage()">
+              <i class="fas fa-times"></i>
+            </button>
+            <div class="image-info" id="imageInfo">
+              <i class="fas fa-image me-2"></i><span id="fileName">No file selected</span>
+            </div>
+          </div>
+
+          <button type="submit" class="btn-predict" id="predictBtn" disabled>
+            <i class="fas fa-search me-2"></i>Analyze & Predict Disease
+          </button>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <div class="supported-crops">
+    <h3><i class="fas fa-check-circle me-2"></i>Supported Crops</h3>
+    <div class="crop-grid">
+      {% for crop in crops %}
+      <div class="crop-item">
+        <i class="fas fa-seedling"></i>
+        <span>{{ crop }}</span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<script>
+  const uploadArea = document.getElementById('uploadArea');
+  const fileInput = document.getElementById('formFile');
+  const imagePreview = document.getElementById('imagePreview');
+  const outputImage = document.getElementById('output-image');
+  const imageInfo = document.getElementById('imageInfo');
+  const fileName = document.getElementById('fileName');
+  const predictBtn = document.getElementById('predictBtn');
+  const cropSelect = document.getElementById('crop-select');
+
+  // Drag and drop functionality
+  ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+    uploadArea.addEventListener(eventName, preventDefaults, false);
+  });
+
+  function preventDefaults(e) {
+    e.preventDefault();
+    e.stopPropagation();
   }
+
+  ['dragenter', 'dragover'].forEach(eventName => {
+    uploadArea.addEventListener(eventName, () => {
+      uploadArea.classList.add('dragover');
+    }, false);
+  });
+
+  ['dragleave', 'drop'].forEach(eventName => {
+    uploadArea.addEventListener(eventName, () => {
+      uploadArea.classList.remove('dragover');
+    }, false);
+  });
+
+  uploadArea.addEventListener('drop', handleDrop, false);
+
+  function handleDrop(e) {
+    const dt = e.dataTransfer;
+    const files = dt.files;
+    if (files.length > 0) {
+      fileInput.files = files;
+      preview_image({ target: { files: files } });
+    }
+  }
+
+  function preview_image(event) {
+    const file = event.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = function() {
+        outputImage.src = reader.result;
+        imagePreview.classList.add('active');
+        fileName.textContent = file.name;
+        checkFormValidity();
+      }
+      reader.readAsDataURL(file);
+    }
+  }
+
+  function removeImage() {
+    fileInput.value = '';
+    outputImage.src = './static/images/upload.jpg';
+    imagePreview.classList.remove('active');
+    fileName.textContent = 'No file selected';
+    checkFormValidity();
+  }
+
+  function checkFormValidity() {
+    const hasFile = fileInput.files.length > 0;
+    const hasCrop = cropSelect.value !== '';
+    predictBtn.disabled = !(hasFile && hasCrop);
+  }
+
+  cropSelect.addEventListener('change', checkFormValidity);
 </script>
-<hr>
 
 {% endblock %}
